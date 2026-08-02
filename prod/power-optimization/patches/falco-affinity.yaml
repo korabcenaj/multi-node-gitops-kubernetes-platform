@@ -1,0 +1,21 @@
+# Falco — prefer worker nodes for controller
+# Falco runs as DaemonSet for kernel monitoring; controller can prefer workers.
+- op: add
+  path: /spec/values/affinity
+  value:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: power.homelab/nightly-off
+                operator: In
+                values:
+                  - "true"
+- op: add
+  path: /spec/values/tolerations
+  value:
+    - key: power.homelab/critical-only
+      operator: Equal
+      value: "true"
+      effect: NoSchedule

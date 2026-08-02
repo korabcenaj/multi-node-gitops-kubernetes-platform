@@ -1,0 +1,85 @@
+---
+# Synapse homeserver configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: synapse-config
+  namespace: matrix
+data:
+  homeserver.yaml: |
+    server_name: "muzshpi.space"
+    pid_file: /data/homeserver.pid
+    public_baseurl: https://matrix.muzshpi.space
+
+    # Trust Traefik proxy
+    trusted_proxies:
+      - 0.0.0.0/0
+
+    listeners:
+      - port: 8008
+        tls: false
+        type: http
+        x_forwarded: true
+        resources:
+          - names: [client, federation]
+            compress: false
+
+    database:
+      name: psycopg2
+      args:
+        user: synapse
+        password: "{{ POSTGRES_PASSWORD }}"
+        database: synapse
+        host: postgres
+        port: 5432
+        cp_min: 5
+        cp_max: 10
+      allow_unsafe_locale: true
+
+    log_config: "/data/muzshpi.space.log.config"
+
+    media_store_path: /data/media_store
+    enable_registration: false
+    enable_registration_without_verification: false
+
+    # Allow users to search the entire user directory (not just room mates)
+    user_directory:
+      search_all_users: true
+
+    # Trusted key servers for federation
+    trusted_key_servers:
+      - server_name: "matrix.org"
+    suppress_key_server_warning: true
+
+    # Disable federation by default (private chat)
+    allow_public_rooms_over_federation: false
+    federation_domain_whitelist: []
+
+    registration_shared_secret: "{{ REGISTRATION_SHARED }}"
+
+    macaroon_secret_key: "{{ MACAROON_KEY }}"
+    form_secret: "{{ FORM_SECRET }}"
+
+    signing_key_path: "/data/muzshpi.space.signing.key"
+
+    report_stats: false
+
+    # Disable telemetry
+    enable_metrics: false
+
+    # Session lifetime
+    session_lifetime: 7d
+
+    # Caches
+    caches:
+      global_factor: 0.5
+      per_cache_factors:
+        get_users_who_share_room_with_user: 2.0
+
+    # Rate limiting
+    rc_message:
+      per_second: 0.2
+      burst_count: 10
+    rc_registration:
+      per_second: 0.17
+      burst_count: 3

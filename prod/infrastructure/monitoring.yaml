@@ -1,0 +1,76 @@
+# kube-prometheus-stack — Flux HelmRelease (migrated from Terraform)
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: monitoring
+spec:
+  # Low-power profile: preserve the release and its data while runtime
+  # workloads are scaled to zero. Remove this field before restoring.
+  suspend: true
+  releaseName: kps
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      version: 86.2.3
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: flux-system
+  interval: 1h
+  timeout: 10m
+  values:
+    prometheus:
+      enabled: true
+      service:
+        type: ClusterIP
+      prometheusSpec:
+        retention: 15d
+        affinity:
+          nodeAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                preference:
+                  matchExpressions:
+                    - key: power.homelab/always-on
+                      operator: In
+                      values: ["true"]
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+    grafana:
+      enabled: true
+      service:
+        type: ClusterIP
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+    alertmanager:
+      enabled: true
+      alertmanagerSpec:
+        resources:
+          requests:
+            cpu: 20m
+            memory: 128Mi
+    defaultRules:
+      create: true
+    nodeExporter:
+      enabled: true
+      nodeSelector:
+        node.longhorn.io/enabled: "true"
+      resources:
+        requests:
+          cpu: 20m
+          memory: 64Mi
+    kube-state-metrics:
+      enabled: true
+
+      resources:
+        requests:
+          cpu: 20m
+          memory: 128Mi

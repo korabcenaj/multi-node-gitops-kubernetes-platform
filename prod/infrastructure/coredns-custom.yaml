@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  korab.space.server: |
+    korab.space {
+      rewrite name regex (.*)\.korab\.space traefik.traefik.svc.cluster.local
+      forward . /etc/resolv.conf
+    }

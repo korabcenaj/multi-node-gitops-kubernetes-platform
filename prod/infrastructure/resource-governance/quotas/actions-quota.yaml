@@ -1,0 +1,21 @@
+# Actions (CI/build) namespace ResourceQuota
+# Workloads: BuildKit (100m/2CPU req/lim), Gitea runner (100m/1CPU).
+# CI builds can burst. Limits are set generously for build capacity.
+# pods=20 allows for multiple concurrent build jobs.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: actions
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: ci-build
+spec:
+  hard:
+    requests.cpu: "500m"
+    requests.memory: 1Gi
+    limits.cpu: "6"
+    limits.memory: 8Gi
+    pods: "20"
+    persistentvolumeclaims: "5"
+    services: "10"

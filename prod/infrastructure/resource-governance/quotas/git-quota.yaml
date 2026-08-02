@@ -1,0 +1,21 @@
+# Git (Gitea) namespace ResourceQuota
+# Workloads: Gitea (stateful), PostgreSQL-HA primary + witness, Valkey primary.
+# Current usage: ~800m/~1152Mi requests. PDBs are set on all StatefulSets.
+# Quota allows for rollout surge on all controllers simultaneously.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: git
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: stateful-platform
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: 4Gi
+    limits.cpu: "6"
+    limits.memory: 8Gi
+    pods: "20"
+    persistentvolumeclaims: "5"
+    services: "20"

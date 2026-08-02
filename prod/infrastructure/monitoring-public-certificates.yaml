@@ -1,0 +1,28 @@
+# Let's Encrypt certificates for public monitoring endpoints via Cloudflare DNS-01.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana-korab-space-tls
+  namespace: monitoring
+spec:
+  secretName: grafana-korab-space-tls
+  dnsNames:
+    - grafana.korab.space
+  issuerRef:
+    name: letsencrypt-cloudflare-prod
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: prometheus-korab-space-tls
+  namespace: monitoring
+spec:
+  secretName: prometheus-korab-space-tls
+  dnsNames:
+    - prometheus.korab.space
+  issuerRef:
+    name: letsencrypt-cloudflare-prod
+    kind: ClusterIssuer
+    group: cert-manager.io

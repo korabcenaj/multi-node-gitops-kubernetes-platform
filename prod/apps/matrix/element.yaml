@@ -1,0 +1,118 @@
+---
+# Element Web config
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: element-config
+  namespace: matrix
+data:
+  config.json: |
+    {
+      "default_server_config": {
+        "m.homeserver": {
+          "base_url": "https://matrix.muzshpi.space",
+          "server_name": "muzshpi.space"
+        },
+        "m.identity_server": {
+          "base_url": "https://vector.im"
+        }
+      },
+      "disable_guests": true,
+      "disable_login_language_selector": false,
+      "disable_3pid_login": false,
+      "brand": "Muzshpi Chat",
+      "integrations_ui_url": "https://scalar.vector.im/",
+      "integrations_rest_url": "https://scalar.vector.im/api",
+      "integrations_widgets_urls": ["https://scalar.vector.im/_matrix/integrations/v1"],
+      "bug_report_endpoint_url": "https://element.io/bugreports/submit",
+      "uisi_autorageshake_app": "element-auto-uisi",
+      "show_labs_settings": false,
+      "room_directory": {
+        "servers": ["muzshpi.space"]
+      },
+      "enable_presence_by_hs_url": {
+        "https://matrix.muzshpi.space": false
+      },
+      "terms_and_conditions_links": [
+        {"text": "Privacy Policy", "url": "https://muzshpi.space/privacy"}
+      ],
+      "posthog": {
+        "project_api_key": "",
+        "api_host": ""
+      }
+    }
+---
+# Element Web Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: element
+  namespace: matrix
+  labels:
+    app: element
+    app.kubernetes.io/part-of: matrix
+spec:
+  # Low-power profile: restore to 1 after Synapse is available.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: element
+  template:
+    metadata:
+      labels:
+        app: element
+    spec:
+      containers:
+        - name: element
+          image: vectorim/element-web:v1.11.106
+          securityContext:
+            runAsUser: 0
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+          ports:
+            - containerPort: 80
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.json
+              subPath: config.json
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: element-config
+---
+# Element Web Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: element
+  namespace: matrix
+  labels:
+    app: element
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+  selector:
+    app: element

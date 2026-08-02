@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-dns-config
+  namespace: kube-system
+  labels:
+    app: node-dns-config
+spec:
+  selector:
+    matchLabels:
+      app: node-dns-config
+  template:
+    metadata:
+      labels:
+        app: node-dns-config
+    spec:
+      hostPID: true
+      hostNetwork: true
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: configurer
+          image: alpine:3.21
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              echo "=== Node DNS Configurer ==="
+
+              # 1. Create systemd-resolved drop-in config
+              mkdir -p /host/etc/systemd/resolved.conf.d
+              cat > /host/etc/systemd/resolved.conf.d/10-k3s-dns.conf << 'RESOLVED'
+              [Resolve]
+              DNS=192.168.1.200 1.1.1.1 8.8.8.8
+              FallbackDNS=1.1.1.1 8.8.8.8
+              RESOLVED
+              echo "[OK] systemd-resolved drop-in created"
+
+              # 2. Start infinite loop to ensure /etc/resolv.conf does not revert
+              echo "=== Starting DNS enforcement loop ==="
+              while true; do
+                if [ -L /host/etc/resolv.conf ] || ! grep -q "nameserver 192.168.1.200" /host/etc/resolv.conf; then
+                  echo "resolv.conf has drifted or reverted, enforcing config..."
+                  rm -f /host/etc/resolv.conf
+                  printf "nameserver 192.168.1.200\nnameserver 1.1.1.1\n" > /host/etc/resolv.conf
+                  echo "[OK] /etc/resolv.conf written"
+
+                  # Restart systemd-resolved to apply changes on host
+                  nsenter -t 1 -m -u -i -n -p -- systemctl restart systemd-resolved 2>/dev/null || true
+                  echo "[OK] systemd-resolved restarted"
+                fi
+                sleep 30
+              done
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: host
+              mountPath: /host
+      volumes:
+        - name: host
+          hostPath:
+            path: /
+            type: Directory

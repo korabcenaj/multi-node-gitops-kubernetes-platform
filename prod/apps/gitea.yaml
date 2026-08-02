@@ -1,0 +1,108 @@
+# Gitea — Flux HelmRelease (migrated from Terraform)
+#
+# ⚠️  CRITICAL STORAGE POLICY:
+# - PostgreSQL-HA uses `longhorn-critical-2replica` — only schedules on
+#   always-on nodes (control1, control2). worker and control3 are shutdown-
+#   capable and MUST NOT host PostgreSQL replicas.
+# - Gitea shared storage also uses `longhorn-critical-2replica` because repo
+#   data must remain available on always-on storage nodes.
+# - All PV reclaim policies are `Retain` — do NOT change to `Delete`.
+# - Before any storage recovery: freeze Gitea + pgpool, dump DB, keep PVs.
+#
+# PostgreSQL-HA: 2 pods (only 2 always-on nodes). Default chart uses 3.
+# Updated via postgresql-ha.postgresql.replicaCount.
+#
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: gitea
+  namespace: git
+spec:
+  releaseName: gitea
+  chart:
+    spec:
+      chart: gitea
+      version: 12.5.3
+      sourceRef:
+        kind: HelmRepository
+        name: gitea
+        namespace: flux-system
+  interval: 1h
+  timeout: 10m
+  values:
+    strategy:
+      type: Recreate
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    gitea:
+      admin:
+        existingSecret: gitea-admin-credentials
+        email: admin@local.lan
+        passwordMode: keepUpdated
+      config:
+        packages:
+          ENABLED: true
+        server:
+          ROOT_URL: https://git.korab.space/
+          DOMAIN: git.korab.space
+          SSH_DOMAIN: git.korab.space
+    ingress:
+      enabled: false
+    persistence:
+      enabled: true
+      # Existing retained PVC uses this immutable class. Migrate data to a new
+      # claim before changing it; see docs/runbooks/gitea-storage-migration.md.
+      storageClass: longhorn-single
+      size: 5Gi
+    postgresql-ha:
+      persistence:
+        enabled: true
+        # Existing StatefulSet claims use this immutable class.
+        storageClass: longhorn-single
+        size: 5Gi
+      postgresql:
+        replicaCount: 1
+        resources:
+          limits:
+            memory: 512Mi
+            cpu: 375m
+          requests:
+            memory: 256Mi
+            cpu: 250m
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: power.homelab/always-on
+                      operator: In
+                      values:
+                        - "true"
+      pgpool:
+        resources:
+          limits:
+            memory: 512Mi
+            cpu: 375m
+          requests:
+            memory: 256Mi
+            cpu: 250m
+    valkey:
+      enabled: true
+      architecture: standalone
+      livenessProbe:
+        initialDelaySeconds: 300
+      readinessProbe:
+        initialDelaySeconds: 180
+      primary:
+        persistence:
+          enabled: false
+      replica:
+        persistence:
+          enabled: false
+    valkey-cluster:
+      enabled: false

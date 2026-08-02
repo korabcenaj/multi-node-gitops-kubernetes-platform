@@ -1,0 +1,20 @@
+# Loki — prefer always-on node (daytime-only: scaled to 0 at night)
+- op: add
+  path: /spec/values/loki/affinity
+  value:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: power.homelab/always-on
+                operator: In
+                values:
+                  - "true"
+- op: add
+  path: /spec/values/loki/tolerations
+  value:
+    - key: power.homelab/critical-only
+      operator: Equal
+      value: "true"
+      effect: NoSchedule

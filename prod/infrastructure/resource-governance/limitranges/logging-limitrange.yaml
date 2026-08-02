@@ -1,0 +1,25 @@
+# Logging namespace LimitRange
+# Loki sets its own requests/limits via HelmRelease values.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-defaults
+  namespace: logging
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: platform-observability
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 50m
+        memory: 128Mi
+      default:
+        cpu: 500m
+        memory: 1Gi
+      min:
+        cpu: 10m
+        memory: 32Mi
+      max:
+        cpu: 2
+        memory: 2Gi

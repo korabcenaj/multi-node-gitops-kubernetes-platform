@@ -1,0 +1,20 @@
+# OAuth2-proxy namespace ResourceQuota
+# No pods currently running. HelmRelease is ready.
+# Pre-emptive quota prevents uncontrolled growth when enabled.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: oauth2-proxy
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: platform-auth
+spec:
+  suspend: true
+  hard:
+    requests.cpu: "200m"
+    requests.memory: 512Mi
+    limits.cpu: "1"
+    limits.memory: 1Gi
+    pods: "5"
+    services: "5"

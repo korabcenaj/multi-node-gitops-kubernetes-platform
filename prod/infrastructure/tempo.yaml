@@ -1,0 +1,38 @@
+# Tempo — Flux HelmRelease (migrated from Terraform)
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: tempo
+  namespace: tracing
+spec:
+  # Low-power profile: preserve the release and Tempo PVC while runtime
+  # workloads are scaled to zero. Remove this field before restoring.
+  suspend: true
+  releaseName: tempo
+  chart:
+    spec:
+      chart: tempo
+      version: 1.24.4
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+  interval: 1h
+  timeout: 5m
+  values:
+    tempo:
+      reportingEnabled: false
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+            http: {}
+        jaeger:
+          protocols:
+            grpc: {}
+            thrift_http: {}
+            thrift_binary: {}
+    persistence:
+      enabled: true
+      storageClassName: longhorn
+      size: 10Gi

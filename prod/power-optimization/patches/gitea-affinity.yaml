@@ -1,0 +1,19 @@
+# Gitea — daytime: prefer worker/control3 (nodes without always-on label).
+# Night-time: night-down cordons+drains worker/control3, pods consolidate to control1/control2.
+- op: add
+  path: /spec/values/affinity
+  value:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: power.homelab/always-on
+                operator: DoesNotExist
+- op: add
+  path: /spec/values/tolerations
+  value:
+    - key: power.homelab/critical-only
+      operator: Equal
+      value: "true"
+      effect: NoSchedule

@@ -1,0 +1,78 @@
+# Power Optimization — Kustomize Component
+# Pins critical services to always-on nodes (control1, control2).
+# Non-critical workloads prefer nightly-off nodes (control3, worker).
+#
+# control1 + control2 = 2 control-plane nodes online → etcd quorum maintained.
+#
+# Labels required on nodes (apply manually or via bootstrap):
+#   power.homelab/always-on: "true"   → control1, control2
+#   power.homelab/nightly-off: "true" → control3, worker
+#
+# Taints required on control1:
+#   power.homelab/critical-only=true:NoSchedule
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# --- Critical 24/7 services pinned to always-on node ---
+patches:
+  # Traefik — ingress controller
+  - path: patches/traefik-affinity.yaml
+    target:
+      kind: HelmRelease
+      name: traefik
+  # cert-manager — TLS automation
+  - path: patches/cert-manager-affinity.yaml
+    target:
+      kind: HelmRelease
+      name: cert-manager
+  # Longhorn — storage controller / CSI
+  - path: patches/longhorn-affinity.yaml
+    target:
+      kind: HelmRelease
+      name: longhorn
+  # kube-prometheus-stack — monitoring
+  - path: patches/monitoring-affinity.yaml
+    target:
+      kind: HelmRelease
+      name: kube-prometheus-stack
+  # Loki — log aggregation
+  - path: patches/loki-affinity.yaml
+    target:
+      kind: HelmRelease
+      name: loki
+  # Tempo — tracing
+  - path: patches/tempo-affinity.yaml
+    target:
+      kind: HelmRelease
+      name: tempo
+  # Gitea — Git service (GitOps source-of-truth)
+  - path: patches/gitea-affinity.yaml
+    target:
+      kind: HelmRelease
+      name: gitea
+  # MetalLB — LoadBalancer controller
+  - path: patches/metallb-affinity.yaml
+    target:
+      kind: HelmRelease
+      name: metallb
+  # Velero — backup/restore
+  - path: patches/velero-affinity.yaml
+    target:
+      kind: HelmRelease
+      name: velero
+  # MinIO — local backup target must remain available for Velero
+  - path: patches/minio-affinity.yaml
+    target:
+      kind: HelmRelease
+      name: minio
+  # --- Non-critical workloads — prefer worker nodes ---
+  # KEDA is omitted from platform resources while there are no consumers.
+
+  # --- DaemonSet everywhere (Cilium must run on all nodes) ---
+  - path: patches/cilium-affinity.yaml
+    target:
+      kind: HelmRelease
+      name: cilium
+
+resources:
+  - pre-shutdown-cronjob.yaml

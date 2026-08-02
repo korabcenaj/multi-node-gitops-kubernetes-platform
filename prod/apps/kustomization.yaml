@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - workloads
+  - gitea.yaml
+  - gitea-certificate.yaml
+  - gitea-networkpolicy.yaml
+  - gitea-httproute.yaml
+  - semaphore-httproute.yaml
+  - semaphore-namespace.yaml
+  - backstage-namespace.yaml
+  - cilium.yaml
+  - matrix/
+  - actions/
+  - media/

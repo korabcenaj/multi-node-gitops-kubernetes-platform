@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: semaphore
+  annotations:
+    # Semaphore (Ansible/task runner UI) and its PostgreSQL backend scale to 0
+    # overnight. Run tasks manually or schedule them within uptime hours.
+    downscaler/uptime: "Mon-Sun 07:00-22:00 Europe/Berlin"

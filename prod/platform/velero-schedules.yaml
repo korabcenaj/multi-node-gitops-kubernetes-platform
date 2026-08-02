@@ -1,0 +1,89 @@
+# Velero Backup Schedules — managed by Flux
+# Daily full, 6h critical, weekly archival
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-full
+  namespace: velero
+  labels:
+    backup.kubernetes.io/component: schedule
+    backup.kubernetes.io/frequency: daily
+spec:
+  # 20:30 CEST / 19:30 CET — cron runs in the Velero server's UTC clock.
+  # Must fire while the cluster and app pods are up (nightly shutdown ~22:00
+  # Berlin) so defaultVolumesToFsBackup can read running pod volumes.
+  schedule: "30 18 * * *"
+  template:
+    includedNamespaces:
+      - '*'
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+    storageLocation: default
+    ttl: 720h  # 30 days
+    defaultVolumesToFsBackup: true
+    snapshotVolumes: false
+    excludedResources:
+      - persistentvolumeclaims
+    labelSelector:
+      matchExpressions:
+        - key: backup.kubernetes.io/exclude
+          operator: DoesNotExist
+  useOwnerReferencesInBackup: false
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: critical-apps-6h
+  namespace: velero
+  labels:
+    backup.kubernetes.io/component: schedule
+    backup.kubernetes.io/frequency: 6h
+spec:
+  # 08:00 / 14:00 / 20:00 CEST — keeps the ~6h cadence but only fires inside
+  # the daily uptime window (cluster is powered off 22:00–07:00 Berlin).
+  schedule: "0 6,12,18 * * *"
+  template:
+    includedNamespaces:
+      - git
+      - longhorn-system
+      - flux-system
+      - cert-manager
+    storageLocation: default
+    ttl: 168h  # 7 days
+    defaultVolumesToFsBackup: true
+    snapshotVolumes: false
+  useOwnerReferencesInBackup: false
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: weekly-full
+  namespace: velero
+  labels:
+    backup.kubernetes.io/component: schedule
+    backup.kubernetes.io/frequency: weekly
+spec:
+  # Sunday 19:00 CEST / 18:00 CET — runs before Sunday's daily-full (18:30 UTC)
+  # so both finish before the ~22:00 Berlin nightly shutdown.
+  schedule: "0 17 * * 0"
+  template:
+    includedNamespaces:
+      - '*'
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+    storageLocation: default
+    ttl: 2016h  # 12 weeks
+    defaultVolumesToFsBackup: true
+    snapshotVolumes: false
+    excludedResources:
+      - persistentvolumeclaims
+    labelSelector:
+      matchExpressions:
+        - key: backup.kubernetes.io/exclude
+          operator: DoesNotExist
+  useOwnerReferencesInBackup: false

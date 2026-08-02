@@ -1,0 +1,41 @@
+# KEDA — Flux HelmRelease (migrated from Terraform)
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: keda
+  namespace: keda
+spec:
+  releaseName: keda
+  chart:
+    spec:
+      chart: keda
+      version: 2.19.0
+      sourceRef:
+        kind: HelmRepository
+        name: kedacore
+        namespace: flux-system
+  interval: 1h
+  timeout: 5m
+  values:
+    resources:
+      operator:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+      webhooks:
+        requests:
+          cpu: 30m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+      metricServer:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi

@@ -1,0 +1,36 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-bootstrap
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: local-lan-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: "local.lan CA"
+  subject:
+    organizations:
+      - home-lab
+  secretName: local-lan-ca-secret
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-bootstrap
+    kind: ClusterIssuer
+    group: cert-manager.io
+  duration: 43800h # 5 years
+  renewBefore: 720h # 30 days
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: local-lan-ca
+spec:
+  ca:
+    secretName: local-lan-ca-secret

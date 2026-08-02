@@ -1,0 +1,24 @@
+# MinIO namespace LimitRange
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-defaults
+  namespace: minio
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: stateful-storage
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 50m
+        memory: 128Mi
+      default:
+        cpu: 500m
+        memory: 512Mi
+      min:
+        cpu: 10m
+        memory: 32Mi
+      max:
+        cpu: 2
+        memory: 2Gi

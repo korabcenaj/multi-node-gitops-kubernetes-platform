@@ -1,0 +1,20 @@
+# Tracing namespace ResourceQuota
+# Workloads: Tempo StatefulSet (currently no requests set — LimitRange will inject defaults).
+# Observed usage: 4m/1058Mi actual. Quota headroom is conservative.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: tracing
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: platform-observability
+spec:
+  hard:
+    requests.cpu: "500m"
+    requests.memory: 2Gi
+    limits.cpu: "2"
+    limits.memory: 4Gi
+    pods: "5"
+    persistentvolumeclaims: "3"
+    services: "5"

@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: buildkit
+  namespace: actions
+  labels:
+    app: buildkit
+    app.kubernetes.io/part-of: ci
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: buildkit
+  template:
+    metadata:
+      labels:
+        app: buildkit
+        app.kubernetes.io/part-of: ci
+    spec:
+      serviceAccountName: buildkit
+      automountServiceAccountToken: false
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      containers:
+        - name: buildkit
+          image: moby/buildkit:v0.20.2
+          args:
+            - --addr
+            - unix:///run/buildkit/buildkitd.sock
+            - --addr
+            - tcp://0.0.0.0:1234
+          ports:
+            - name: grpc
+              containerPort: 1234
+              protocol: TCP
+          # Rootful BuildKit currently requires privilege. NetworkPolicy,
+          # worker-only placement and a tokenless service account contain it.
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+              ephemeral-storage: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+              ephemeral-storage: 20Gi
+          readinessProbe:
+            exec:
+              command: [buildctl, debug, workers]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: [buildctl, debug, workers]
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          volumeMounts:
+            - name: buildkit-state
+              mountPath: /var/lib/buildkit
+      volumes:
+        - name: buildkit-state
+          emptyDir:
+            sizeLimit: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: buildkit
+  namespace: actions
+  labels:
+    app: buildkit
+spec:
+  selector:
+    app: buildkit
+  ports:
+    - name: grpc
+      port: 1234
+      targetPort: 1234
+      protocol: TCP

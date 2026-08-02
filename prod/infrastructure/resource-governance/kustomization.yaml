@@ -1,0 +1,33 @@
+# Resource Governance — Flux Kustomization entrypoint
+# Manages ResourceQuotas and LimitRanges for all non-system namespaces.
+# System-critical namespaces (kube-system, longhorn-system, metallb-system,
+# cert-manager, flux-system, traefik, dns, keda, kepler, cilium-secrets)
+# are intentionally excluded — their resource governance is via explicit
+# manifest requests/limits, not namespace-level quotas.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # ResourceQuotas
+  - quotas/velero-quota.yaml
+  - quotas/monitoring-quota.yaml
+  - quotas/git-quota.yaml
+  - quotas/matrix-quota.yaml
+  - quotas/minio-quota.yaml
+  - quotas/logging-quota.yaml
+  - quotas/tracing-quota.yaml
+  - quotas/ldap-quota.yaml
+  - quotas/actions-quota.yaml
+  - quotas/semaphore-quota.yaml
+  - quotas/oauth2-proxy-quota.yaml
+  # LimitRanges
+  - limitranges/velero-limitrange.yaml
+  - limitranges/monitoring-limitrange.yaml
+  - limitranges/git-limitrange.yaml
+  - limitranges/matrix-limitrange.yaml
+  - limitranges/minio-limitrange.yaml
+  - limitranges/logging-limitrange.yaml
+  - limitranges/tracing-limitrange.yaml
+  - limitranges/ldap-limitrange.yaml
+  - limitranges/actions-limitrange.yaml
+  - limitranges/semaphore-limitrange.yaml
+  - limitranges/oauth2-proxy-limitrange.yaml

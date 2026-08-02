@@ -1,0 +1,21 @@
+# Cilium — DaemonSet, must run on ALL nodes including always-on
+# Existing tolerations already include operator: Exists (covers all taints).
+# Add node affinity to prefer always-on for operator, DaemonSet remains everywhere.
+- op: add
+  path: /spec/values/operator/affinity
+  value:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: power.homelab/always-on
+                operator: In
+                values:
+                  - "true"
+- op: add
+  path: /spec/values/operator/tolerations
+  value:
+    - key: power.homelab/critical-only
+      operator: Equal
+      value: "true"
+      effect: NoSchedule

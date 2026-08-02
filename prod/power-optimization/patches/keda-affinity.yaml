@@ -1,0 +1,20 @@
+# KEDA — prefer worker nodes (can restart safely)
+- op: add
+  path: /spec/values/affinity
+  value:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: power.homelab/nightly-off
+                operator: In
+                values:
+                  - "true"
+- op: add
+  path: /spec/values/tolerations
+  value:
+    - key: power.homelab/critical-only
+      operator: Equal
+      value: "true"
+      effect: NoSchedule

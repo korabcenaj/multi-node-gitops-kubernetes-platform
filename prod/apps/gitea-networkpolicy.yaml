@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gitea-ingress
+  namespace: git
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: gitea
+      app.kubernetes.io/name: gitea
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: flux-system
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: actions
+      ports:
+        - protocol: TCP
+          port: 3000
+        - protocol: TCP
+          port: 22

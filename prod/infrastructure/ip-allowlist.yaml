@@ -1,0 +1,14 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: ip-allowlist
+  namespace: traefik
+spec:
+  ipAllowList:
+    sourceRange:
+      - "127.0.0.1/32"
+      - "192.168.1.0/24"   # Home LAN
+      - "10.244.0.0/16"    # Cluster pod CIDR (Gitea Runners, internal services)
+      - "10.96.0.0/12"     # Cluster service CIDR
+      - "100.64.0.0/10"    # Tailscale IPv4
+      - "fd7a:115c:a1e0::/48" # Tailscale IPv6

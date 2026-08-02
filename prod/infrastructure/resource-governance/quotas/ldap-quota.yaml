@@ -1,0 +1,19 @@
+# LDAP namespace ResourceQuota
+# Workloads: OpenLDAP (50m/128Mi req). Single pod, minimal.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: ldap
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: platform-auth
+spec:
+  hard:
+    requests.cpu: "200m"
+    requests.memory: 512Mi
+    limits.cpu: "1"
+    limits.memory: 1Gi
+    pods: "5"
+    persistentvolumeclaims: "3"
+    services: "5"

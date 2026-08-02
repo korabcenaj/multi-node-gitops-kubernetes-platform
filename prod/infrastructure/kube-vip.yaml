@@ -1,0 +1,134 @@
+# Highly available K3s API endpoint: https://192.168.1.199:6443
+# K3s supports kube-vip as an in-cluster DaemonSet. Service LoadBalancer
+# handling remains disabled here because MetalLB owns that function.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-vip
+  namespace: kube-system
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:kube-vip-role
+rules:
+  - apiGroups: [""]
+    resources: [services/status]
+    verbs: [update]
+  - apiGroups: [""]
+    resources: [services, endpoints]
+    verbs: [list, get, watch, update]
+  - apiGroups: [""]
+    resources: [nodes]
+    verbs: [list, get, watch, update, patch]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [list, get, watch, update, create]
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [list, get, watch, update]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:kube-vip-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:kube-vip-role
+subjects:
+  - kind: ServiceAccount
+    name: kube-vip
+    namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kube-vip-ds
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: kube-vip
+    app.kubernetes.io/component: control-plane-vip
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-vip
+      app.kubernetes.io/component: control-plane-vip
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kube-vip
+        app.kubernetes.io/component: control-plane-vip
+    spec:
+      serviceAccountName: kube-vip
+      priorityClassName: system-node-critical
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      terminationGracePeriodSeconds: 5
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: "true"
+      tolerations:
+        - operator: Exists
+          effect: NoSchedule
+        - operator: Exists
+          effect: NoExecute
+      containers:
+        - name: kube-vip
+          image: ghcr.io/kube-vip/kube-vip:v1.0.3
+          imagePullPolicy: IfNotPresent
+          args: [manager]
+          env:
+            # kube-vip must not use the kubernetes Service IP here. Cilium
+            # provides that IP through kube-proxy replacement, while Cilium
+            # itself uses the control-plane VIP during startup. Pointing this
+            # host-networked pod at each server's local API breaks that
+            # circular dependency after a full-cluster shutdown.
+            - name: KUBERNETES_SERVICE_HOST
+              value: 127.0.0.1
+            - name: KUBERNETES_SERVICE_PORT
+              value: "6443"
+            - name: vip_arp
+              value: "true"
+            - name: port
+              value: "6443"
+            # Omit vip_interface so kube-vip detects each node's default
+            # interface; all three control-plane nodes use different names.
+            - name: vip_subnet
+              value: "32"
+            - name: cp_enable
+              value: "true"
+            - name: cp_namespace
+              value: kube-system
+            - name: svc_enable
+              value: "false"
+            - name: vip_leaderelection
+              value: "true"
+            - name: vip_leaseduration
+              value: "5"
+            - name: vip_renewdeadline
+              value: "3"
+            - name: vip_retryperiod
+              value: "1"
+            - name: address
+              value: 192.168.1.199
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add: [NET_ADMIN, NET_RAW]
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

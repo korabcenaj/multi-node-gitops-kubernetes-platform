@@ -1,0 +1,27 @@
+# Actions (CI/build) namespace LimitRange
+# BuildKit and Gitea runner set their own requests/limits.
+# Default limit is generous to accommodate CI build jobs without explicit resources.
+# CI build jobs can be CPU and memory intensive; avoid injecting tiny limits.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-defaults
+  namespace: actions
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: ci-build
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+      default:
+        cpu: 2
+        memory: 2Gi
+      min:
+        cpu: 10m
+        memory: 32Mi
+      max:
+        cpu: 4
+        memory: 8Gi

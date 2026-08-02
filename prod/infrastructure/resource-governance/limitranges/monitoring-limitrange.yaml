@@ -1,0 +1,27 @@
+# Monitoring namespace LimitRange
+# Prometheus sets its larger resources explicitly. Keep defaults modest for
+# chart sidecars and exporters so one omitted resources block cannot consume
+# the namespace quota and prevent the rest of the monitoring stack starting.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-defaults
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: platform-observability
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 25m
+        memory: 64Mi
+      default:
+        cpu: 500m
+        memory: 512Mi
+      min:
+        cpu: 10m
+        memory: 32Mi
+      max:
+        cpu: 2
+        memory: 4Gi

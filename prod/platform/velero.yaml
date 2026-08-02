@@ -1,0 +1,70 @@
+# Velero — Flux HelmRelease (migrated from Terraform)
+# Sensitive values via Kubernetes Secret velero-credentials
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: velero
+  namespace: velero
+spec:
+  releaseName: velero
+  chart:
+    spec:
+      chart: velero
+      version: 12.0.3
+      sourceRef:
+        kind: HelmRepository
+        name: vmware-tanzu
+        namespace: flux-system
+  dependsOn:
+    - name: minio
+      namespace: minio
+  interval: 1h
+  timeout: 10m
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    # Required by schedules using defaultVolumesToFsBackup. Without the
+    # node-agent DaemonSet, PVC contents are skipped and backups partially fail.
+    deployNodeAgent: true
+    nodeAgent:
+      # Point node-agent at the concurrency ConfigMap so it reads loadConcurrency
+      # at startup instead of defaulting to 1 sequential job per node.
+      extraArgs:
+        - --node-agent-configmap=node-agent-config
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    configuration:
+      backupStorageLocation:
+        - name: default
+          provider: aws
+          bucket: haru-k8s-backups
+          default: true
+          config:
+            region: minio
+            s3ForcePathStyle: "true"
+            s3Url: http://minio.minio.svc.cluster.local:9000
+      volumeSnapshotLocation: []
+    credentials:
+      useSecret: true
+    initContainers:
+      - name: velero-plugin-for-aws
+        image: velero/velero-plugin-for-aws:v1.12.0
+        volumeMounts:
+          - mountPath: /target
+            name: plugins
+  valuesFrom:
+    - kind: Secret
+      name: velero-credentials
+      valuesKey: cloud
+      targetPath: credentials.secretContents.cloud

@@ -1,0 +1,84 @@
+# Backblaze B2 off-site backup target.
+# Credentials are provisioned out-of-band in Secret/velero-backblaze-credentials
+# and are intentionally never stored in Git.
+---
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: backblaze
+  namespace: velero
+  labels:
+    backup.kubernetes.io/location: offsite
+spec:
+  provider: aws
+  accessMode: ReadWrite
+  credential:
+    name: velero-backblaze-credentials
+    key: cloud
+  objectStorage:
+    bucket: k8s-cluster-backup
+    prefix: homelab
+  config:
+    region: eu-central-003
+    s3ForcePathStyle: "true"
+    s3Url: https://s3.eu-central-003.backblazeb2.com
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: offsite-daily
+  namespace: velero
+  labels:
+    backup.kubernetes.io/component: schedule
+    backup.kubernetes.io/frequency: daily
+    backup.kubernetes.io/location: offsite
+spec:
+  # 21:00 CEST / 20:00 CET — after daily-full (18:30 UTC), before the ~22:00
+  # Berlin nightly shutdown. Cron runs in the Velero server's UTC clock.
+  schedule: "0 19 * * *"
+  template:
+    includedNamespaces:
+      - '*'
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+    storageLocation: backblaze
+    ttl: 720h
+    defaultVolumesToFsBackup: true
+    snapshotVolumes: false
+    labelSelector:
+      matchExpressions:
+        - key: backup.kubernetes.io/exclude
+          operator: DoesNotExist
+  useOwnerReferencesInBackup: false
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: offsite-weekly
+  namespace: velero
+  labels:
+    backup.kubernetes.io/component: schedule
+    backup.kubernetes.io/frequency: weekly
+    backup.kubernetes.io/location: offsite
+spec:
+  # Sunday 19:30 CEST / 18:30 CET — after weekly-full (17:00 UTC), leaving
+  # headroom before the ~22:00 Berlin nightly shutdown.
+  schedule: "30 17 * * 0"
+  template:
+    includedNamespaces:
+      - '*'
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+    storageLocation: backblaze
+    ttl: 2016h
+    defaultVolumesToFsBackup: true
+    snapshotVolumes: false
+    labelSelector:
+      matchExpressions:
+        - key: backup.kubernetes.io/exclude
+          operator: DoesNotExist
+  useOwnerReferencesInBackup: false

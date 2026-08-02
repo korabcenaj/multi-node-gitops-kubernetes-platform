@@ -1,0 +1,70 @@
+# Longhorn — Flux HelmRelease (migrated from Terraform)
+#
+# Storage scheduling policy (see longhorn-scheduling-policy.sh):
+#   control1, control2: always-on nodes → tagged "always-on","critical"
+#   control3:            temporary node → allowScheduling=false, evictionRequested
+#   worker:              bulk only (3TB HDD) → tagged "bulk", diskSelector: bulk
+#
+# Default replica count: 2 (only 2 always-on nodes).
+# Longhorn is the default StorageClass (defaultClass: "true").
+# Default StorageClass has 2 replicas — sufficient for always-on nodes.
+# For critical DB workloads, use longhorn-critical-2replica (nodeSelector: always-on).
+# For bulk/offline storage, use longhorn-worker-bulk (diskSelector: bulk).
+#
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: longhorn
+  namespace: longhorn-system
+spec:
+  releaseName: longhorn
+  chart:
+    spec:
+      chart: longhorn
+      version: 1.12.0
+      sourceRef:
+        kind: HelmRepository
+        name: longhorn
+        namespace: flux-system
+  interval: 1h
+  timeout: 10m
+  values:
+    csi:
+      nodeSelector:
+        node.longhorn.io/enabled: "true"
+    longhornManager:
+      nodeSelector:
+        node.longhorn.io/enabled: "true"
+    defaultSettings:
+      defaultDataPath: /var/lib/longhorn
+      defaultReplicaCount: 2
+      defaultDataLocality: best-effort
+      storageMinimalAvailablePercentage: 10
+      guaranteedInstanceManagerCPU: 5
+      backupTarget: s3://haru-k8s-backups@us-east-1/
+      backupTargetCredentialSecret: minio-backup-secret
+    persistence:
+      defaultClass: "true"
+      defaultClassReplicaCount: 2
+    resources:
+      manager:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+      driver:
+        requests:
+          cpu: 20m
+          memory: 128Mi
+      ui:
+        requests:
+          cpu: 20m
+          memory: 128Mi
+    # The Longhorn control plane, CSI, managers, engines, and replicas remain
+    # enabled. Only the optional web UI is scaled down for the low-power profile.
+    longhornUI:
+      replicas: 1
+    ingress:
+      enabled: false
+      host: longhorn.local.lan
+      tls: true
+      tlsSecret: longhorn-local-lan-tls

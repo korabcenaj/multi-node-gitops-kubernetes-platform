@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cert-manager
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: minio
+  annotations:
+    # MinIO is scaled down overnight together with the observability stack.
+    # Velero backup CronJobs run at night — if you re-enable nighttime backups,
+    # either remove this annotation or set downscaler/exclude on the velero namespace.
+    downscaler/uptime: "Mon-Sun 07:00-22:00 Europe/Berlin"
+---
+# ── Optional observability namespaces ─────────────────────────────────────────
+# These are high-memory workloads that don't need to run 24/7.
+# TSDB data is retained on Longhorn PVCs and survives the scale-down.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  annotations:
+    downscaler/uptime: "Mon-Sun 07:00-22:00 Europe/Berlin"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: logging
+  annotations:
+    downscaler/uptime: "Mon-Sun 07:00-22:00 Europe/Berlin"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tracing
+  annotations:
+    downscaler/uptime: "Mon-Sun 07:00-22:00 Europe/Berlin"

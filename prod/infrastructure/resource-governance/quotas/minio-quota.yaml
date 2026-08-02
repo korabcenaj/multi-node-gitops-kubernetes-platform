@@ -1,0 +1,19 @@
+# MinIO namespace ResourceQuota
+# Single-pod MinIO object store. Current usage: 100m/256Mi req.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: minio
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: stateful-storage
+spec:
+  hard:
+    requests.cpu: "500m"
+    requests.memory: 1Gi
+    limits.cpu: "2"
+    limits.memory: 2Gi
+    pods: "5"
+    persistentvolumeclaims: "3"
+    services: "5"

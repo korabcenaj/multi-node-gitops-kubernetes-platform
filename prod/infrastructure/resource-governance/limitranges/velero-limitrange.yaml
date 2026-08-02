@@ -1,0 +1,26 @@
+# Velero namespace LimitRange
+# Velero job pods and the velero daemon have explicit requests/limits.
+# This LimitRange provides a safety net for any unset containers.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-defaults
+  namespace: velero
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: platform-backup
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 50m
+        memory: 128Mi
+      default:
+        cpu: 500m
+        memory: 512Mi
+      min:
+        cpu: 10m
+        memory: 32Mi
+      max:
+        cpu: 4
+        memory: 4Gi

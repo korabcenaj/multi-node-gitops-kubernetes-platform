@@ -1,0 +1,16 @@
+# Let's Encrypt certificate for git.korab.space (public-facing domain)
+# Separate from git.local.lan which uses local-lan-ca (private CA)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: git-korab-space-tls
+  namespace: git
+spec:
+  secretName: git-korab-space-tls
+  dnsNames:
+    - git.korab.space
+    - gitea.korab.space
+  issuerRef:
+    name: letsencrypt-cloudflare-prod
+    kind: ClusterIssuer
+    group: cert-manager.io

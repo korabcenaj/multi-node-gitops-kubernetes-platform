@@ -1,0 +1,38 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: traefik
+  namespace: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-cloudflare-prod
+spec:
+  gatewayClassName: traefik
+  listeners:
+    - name: web
+      protocol: HTTP
+      port: 8000
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: websecure-korab
+      protocol: HTTPS
+      port: 8443
+      hostname: "*.korab.space"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: korab-space-tls
+    - name: websecure-muzshpi
+      protocol: HTTPS
+      port: 8443
+      hostname: "*.muzshpi.space"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: muzshpi-space-tls

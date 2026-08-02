@@ -1,0 +1,37 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: tailscale-operator
+  namespace: tailscale
+spec:
+  releaseName: tailscale-operator
+  interval: 1h
+  timeout: 10m
+  chart:
+    spec:
+      chart: tailscale-operator
+      version: 1.98.9
+      sourceRef:
+        kind: HelmRepository
+        name: tailscale
+        namespace: flux-system
+      interval: 24h
+  values:
+    installCRDs: true
+    operatorConfig:
+      defaultTags:
+        - tag:k8s-operator
+      logging: info
+      resources:
+        requests:
+          cpu: 25m
+          memory: 64Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+    proxyConfig:
+      defaultTags: tag:k3s-git-egress
+      firewallMode: auto
+    apiServerProxyConfig:
+      mode: "false"
+      allowImpersonation: "false"

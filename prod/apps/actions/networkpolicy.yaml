@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: buildkit-ingress
+  namespace: actions
+spec:
+  podSelector:
+    matchLabels:
+      app: buildkit
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gitea-runner
+      ports:
+        - protocol: TCP
+          port: 1234

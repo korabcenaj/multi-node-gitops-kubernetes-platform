@@ -1,0 +1,26 @@
+# Matrix namespace LimitRange
+# Synapse and Postgres set their own requests/limits via manifests.
+# Element is a lightweight frontend. Safety net for init/sidecar containers.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-defaults
+  namespace: matrix
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: stateful-app
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 50m
+        memory: 128Mi
+      default:
+        cpu: 500m
+        memory: 1Gi
+      min:
+        cpu: 10m
+        memory: 32Mi
+      max:
+        cpu: 4
+        memory: 4Gi

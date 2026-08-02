@@ -1,0 +1,20 @@
+# MetalLB — pin controller to always-on node
+# Speaker runs as DaemonSet on all nodes; controller should be on always-on.
+- op: add
+  path: /spec/values/controller/affinity
+  value:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: power.homelab/always-on
+                operator: In
+                values:
+                  - "true"
+- op: add
+  path: /spec/values/controller/tolerations
+  value:
+    - key: power.homelab/critical-only
+      operator: Equal
+      value: "true"
+      effect: NoSchedule

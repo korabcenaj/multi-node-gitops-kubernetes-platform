@@ -1,0 +1,26 @@
+# Git (Gitea) namespace LimitRange
+# PostgreSQL, Valkey, and Gitea all set their own requests/limits.
+# This is a safety net for sidecar containers and init containers.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-defaults
+  namespace: git
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: stateful-platform
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 50m
+        memory: 128Mi
+      default:
+        cpu: 500m
+        memory: 512Mi
+      min:
+        cpu: 10m
+        memory: 32Mi
+      max:
+        cpu: 4
+        memory: 4Gi

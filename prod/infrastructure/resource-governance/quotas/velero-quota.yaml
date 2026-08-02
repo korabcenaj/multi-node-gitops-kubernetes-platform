@@ -1,0 +1,21 @@
+# Velero namespace ResourceQuota
+# Velero spawns many short-lived kopia-maintain Job pods (one per schedule per namespace).
+# Current usage: 350m/768Mi requests, 3000m/3072Mi limits.
+# Quota headroom accounts for parallel daily/6h/weekly schedule runs.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: velero
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: platform-backup
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: 4Gi
+    limits.cpu: "8"
+    limits.memory: 8Gi
+    pods: "60"
+    persistentvolumeclaims: "5"
+    services: "10"

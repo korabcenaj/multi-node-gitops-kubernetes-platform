@@ -1,0 +1,122 @@
+# Backstage — Flux HelmRelease
+#
+# Developer Portal for the Homelab.
+# Image is built from /home/dev/Documents/apps/backstage/ and pushed to Gitea Container Registry.
+#
+# ⚠️  REQUIREMENTS (before deploying):
+#   1. Build & push the Docker image to Gitea Registry:
+#        cd /home/dev/Documents/apps/backstage
+#        yarn install --immutable
+#        yarn tsc
+#        yarn build:backend
+#        yarn build-image
+#        docker tag backstage git.korab.space/korab/backstage:latest
+#        docker push git.korab.space/korab/backstage:latest
+#   2. Create the backstage namespace:
+#        kubectl create ns backstage
+#   3. Create the database & credentials Secret:
+#        kubectl create secret generic backstage-secrets -n backstage \
+#          --from-literal=postgres-host=<host> \
+#          --from-literal=postgres-port=5432 \
+#          --from-literal=postgres-user=backstage \
+#          --from-literal=postgres-password=<password> \
+#          --from-literal=postgres-db=backstage \
+#          --from-literal=github-token=<token>
+#   4. Create the app-config ConfigMap (see docs/ for details).
+#
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: backstage
+  namespace: backstage
+spec:
+  releaseName: backstage
+  chart:
+    spec:
+      chart: backstage
+      version: 2.8.2
+      sourceRef:
+        kind: HelmRepository
+        name: backstage
+        namespace: flux-system
+  interval: 1h
+  timeout: 10m
+  values:
+    backstage:
+      image:
+        registry: git.korab.space
+        repository: korab/backstage
+        tag: dev
+        pullPolicy: IfNotPresent
+
+      # ── Startup command with runtime config files ──────────────
+      command: ["node", "packages/backend"]
+      args:
+        - "--config"
+        - "app-config.yaml"
+        - "--config"
+        - "app-config.d/production.yaml"
+        - "--config"
+        - "app-config.d/app.yaml"
+        - "--config"
+        - "app-config.d/kubernetes.yaml"
+        - "--config"
+        - "app-config.d/gitea.yaml"
+
+      # ── Environment variables from existing Secrets ────────────
+      extraEnvVars:
+        - name: NODE_ENV
+          value: production
+        - name: NODE_OPTIONS
+          value: "--no-node-snapshot"
+      extraEnvVarsSecrets:
+        - backstage-postgres
+        - backstage-gitea
+
+      # ── Mount app-config overrides via ConfigMap ───────────────
+      extraVolumes:
+        - name: app-config
+          configMap:
+            name: backstage-app-config
+      extraVolumeMounts:
+        - name: app-config
+          mountPath: /app/app-config.d
+          readOnly: true
+
+      # ── Resource limits ────────────────────────────────────────
+      resources:
+        requests:
+          memory: 512Mi
+          cpu: 250m
+        limits:
+          memory: 1Gi
+          cpu: 500m
+
+      # ── Prefer always-on nodes ─────────────────────────────────
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: power.homelab/always-on
+                    operator: In
+                    values:
+                      - "true"
+
+    # ── Ingress (Traefik + Let's Encrypt via cert-manager) ──────
+    ingress:
+      enabled: true
+      className: traefik
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-cloudflare-dns01
+        traefik.ingress.kubernetes.io/router.tls: "true"
+      host: backstage.korab.space
+      path: /
+      tls:
+        enabled: true
+        secretName: backstage-tls
+
+    # ── External PostgreSQL (disable built-in chart) ────────────
+    postgresql:
+      enabled: false

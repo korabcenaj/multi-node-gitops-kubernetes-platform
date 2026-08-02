@@ -1,0 +1,79 @@
+# kube-prometheus-stack — prefer always-on node (daytime-only: scaled to 0 at night)
+# Prometheus, Grafana, AlertManager, kube-state-metrics on preferred always-on.
+# nodeExporter is DaemonSet that follows nodes.
+- op: add
+  path: /spec/values/prometheus/prometheusSpec/affinity
+  value:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: power.homelab/always-on
+                operator: In
+                values:
+                  - "true"
+- op: add
+  path: /spec/values/prometheus/prometheusSpec/tolerations
+  value:
+    - key: power.homelab/critical-only
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+- op: add
+  path: /spec/values/grafana/affinity
+  value:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: power.homelab/always-on
+                operator: In
+                values:
+                  - "true"
+- op: add
+  path: /spec/values/grafana/tolerations
+  value:
+    - key: power.homelab/critical-only
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+- op: add
+  path: /spec/values/alertmanager/affinity
+  value:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: power.homelab/always-on
+                operator: In
+                values:
+                  - "true"
+- op: add
+  path: /spec/values/alertmanager/tolerations
+  value:
+    - key: power.homelab/critical-only
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+- op: add
+  path: /spec/values/kube-state-metrics/affinity
+  value:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: power.homelab/always-on
+                operator: In
+                values:
+                  - "true"
+- op: add
+  path: /spec/values/kube-state-metrics/tolerations
+  value:
+    - key: power.homelab/critical-only
+      operator: Equal
+      value: "true"
+      effect: NoSchedule

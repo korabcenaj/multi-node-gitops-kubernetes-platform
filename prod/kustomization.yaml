@@ -1,0 +1,24 @@
+# ─────────────────────────────────────────────────────────────
+# Homelab Cluster — Flux Kustomization
+# Phased GitOps migration from Terraform to FluxCD.
+#
+# Enable phases incrementally:
+#   1. helm-repositories  (prerequisite)
+#   2. infrastructure     (cert-manager, traefik, longhorn, monitoring, loki, tempo)
+#   3. platform           (falco, keda, metallb, oauth2-proxy, velero)
+#   4. apps               (gitea, cilium-last)
+#
+# After each phase reconciles successfully, remove the corresponding
+# helm_release from Terraform state before enabling the next phase.
+# ─────────────────────────────────────────────────────────────
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - helm-repositories
+  - infrastructure    # Phase 1: cert-manager, traefik, longhorn, monitoring, loki, tempo
+  - networking        # LAN DNS and node resolver support
+  - platform          # Phase 2: falco, keda, metallb, oauth2-proxy, velero
+  - apps              # Phase 3: gitea, cilium (LAST)
+
+components:
+  - power-optimization  # Pin critical services to always-on node, prefer workers for non-critical

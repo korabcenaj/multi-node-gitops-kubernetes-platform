@@ -1,0 +1,16 @@
+# Flux GitRepository — infra-repo (GitOps infrastructure)
+# Canonical HTTPS URL; Kubernetes DNS rewrites only this hostname to the
+# Tailscale Operator egress Service during the coordinated VPS cutover.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: infra-repo
+  namespace: flux-system
+spec:
+  interval: 5m
+  url: https://git.korab.space/gitea_admin/infra-repo.git
+  ref:
+    branch: main
+  timeout: 60s
+  secretRef:
+    name: gitea-credentials

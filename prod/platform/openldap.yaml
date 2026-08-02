@@ -1,0 +1,157 @@
+# OpenLDAP — Raw Kubernetes Deployment (osixia/openldap)
+#
+# Lightweight LDAP server for homelab authentication.
+# Used by Backstage for centralized auth.
+#
+# Base DN:  dc=homelab,dc=local
+# Admin DN: cn=admin,dc=homelab,dc=local
+# User:     uid=backstage,ou=users,dc=homelab,dc=local  (password: backstage123)
+# Group:    cn=backstage,ou=groups,dc=homelab,dc=local
+#
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openldap-ldif
+  namespace: ldap
+data:
+  01-backstage.ldif: |
+    # ── OUs ────────────────────────────────────────────────────
+    dn: ou=users,dc=homelab,dc=local
+    objectClass: organizationalUnit
+    ou: users
+
+    dn: ou=groups,dc=homelab,dc=local
+    objectClass: organizationalUnit
+    ou: groups
+
+    # ── Backstage login user ───────────────────────────────────
+    dn: uid=backstage,ou=users,dc=homelab,dc=local
+    objectClass: inetOrgPerson
+    objectClass: organizationalPerson
+    objectClass: person
+    objectClass: top
+    cn: Backstage Admin
+    sn: Admin
+    uid: backstage
+    userPassword: backstage123
+    mail: backstage@homelab.local
+
+    # ── Backstage group ────────────────────────────────────────
+    dn: cn=backstage,ou=groups,dc=homelab,dc=local
+    objectClass: groupOfNames
+    objectClass: top
+    cn: backstage
+    member: uid=backstage,ou=users,dc=homelab,dc=local
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openldap-admin
+  namespace: ldap
+stringData:
+  LDAP_ADMIN_PASSWORD: ldap-admin-password
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openldap
+  namespace: ldap
+  labels:
+    app: openldap
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openldap
+  template:
+    metadata:
+      labels:
+        app: openldap
+    spec:
+      initContainers:
+        - name: copy-ldif
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              cp /ldif/*.ldif /bootstrap/
+          volumeMounts:
+            - name: ldif-source
+              mountPath: /ldif
+            - name: ldif-bootstrap
+              mountPath: /bootstrap
+      containers:
+        - name: openldap
+          image: osixia/openldap:1.5.0
+          ports:
+            - name: ldap
+              containerPort: 389
+          env:
+            - name: LDAP_ORGANISATION
+              value: Homelab
+            - name: LDAP_DOMAIN
+              value: homelab.local
+            - name: LDAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openldap-admin
+                  key: LDAP_ADMIN_PASSWORD
+            - name: LDAP_TLS
+              value: "false"
+            # Re-seed LDIF on every restart (idempotent with existing data)
+            - name: LDAP_REMOVE_CONFIG_AFTER_SETUP
+              value: "false"
+          volumeMounts:
+            - name: ldif-bootstrap
+              mountPath: /container/service/slapd/assets/config/bootstrap/ldif/custom
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 50m
+            limits:
+              memory: 256Mi
+              cpu: 200m
+          livenessProbe:
+            tcpSocket:
+              port: 389
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 389
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: ldif-source
+          configMap:
+            name: openldap-ldif
+        - name: ldif-bootstrap
+          emptyDir: {}
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: power.homelab/always-on
+                    operator: In
+                    values:
+                      - "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openldap
+  namespace: ldap
+  labels:
+    app: openldap
+spec:
+  type: ClusterIP
+  ports:
+    - name: ldap
+      port: 389
+      targetPort: 389
+  selector:
+    app: openldap

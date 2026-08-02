@@ -1,0 +1,63 @@
+# MinIO — S3-compatible object storage for Velero backups
+# Deployed as infrastructure dependency before Velero (platform)
+# Uses official MinIO Helm chart (charts.min.io)
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: minio
+  namespace: minio
+spec:
+  releaseName: minio
+  chart:
+    spec:
+      chart: minio
+      version: "5.4.0"
+      sourceRef:
+        kind: HelmRepository
+        name: minio
+        namespace: flux-system
+  interval: 1h
+  timeout: 10m
+  values:
+    mode: standalone
+    replicas: 1
+    # A standalone instance uses one RWO PVC. Recreate releases the volume
+    # before starting its replacement and avoids multi-attach rollout stalls.
+    deploymentUpdate:
+      type: Recreate
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: longhorn-single
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: power.homelab/always-on
+                  operator: DoesNotExist
+    # Buckets for Velero backups
+    buckets:
+      - name: haru-k8s-backups
+        policy: none
+        purge: false
+    # Disable TLS for internal cluster use
+    environment:
+      MINIO_BROWSER: "on"
+  valuesFrom:
+    - kind: Secret
+      name: minio-credentials
+      valuesKey: root-user
+      targetPath: rootUser
+    - kind: Secret
+      name: minio-credentials
+      valuesKey: root-password
+      targetPath: rootPassword

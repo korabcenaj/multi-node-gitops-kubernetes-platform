@@ -1,0 +1,30 @@
+# Tracing namespace LimitRange
+# Tempo StatefulSet currently has NO requests or limits set.
+# Observed actual usage: 4m CPU / 1058Mi memory.
+# This LimitRange WILL be injected into Tempo's container immediately.
+# IMPORTANT: The default limit of 2Gi memory is set conservatively above
+# Tempo's observed 1058Mi to avoid OOM kills. If Tempo grows, update
+# the Helm values to set explicit requests/limits and raise the quota.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-defaults
+  namespace: tracing
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: platform-observability
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+      default:
+        cpu: 1
+        memory: 2Gi
+      min:
+        cpu: 10m
+        memory: 32Mi
+      max:
+        cpu: 2
+        memory: 4Gi

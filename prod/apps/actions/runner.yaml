@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitea-runner
+  namespace: actions
+  labels:
+    app: gitea-runner
+    app.kubernetes.io/part-of: ci
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitea-runner
+  template:
+    metadata:
+      labels:
+        app: gitea-runner
+        app.kubernetes.io/part-of: ci
+    spec:
+      serviceAccountName: gitea-runner
+      automountServiceAccountToken: true
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: copy-buildctl
+          image: moby/buildkit:v0.20.2
+          command: [/bin/sh, -c]
+          args:
+            - |
+              set -e
+              cp /usr/bin/buildctl /tools/buildctl
+              chmod 0755 /tools/buildctl
+          securityContext:
+            allowPrivilegeEscalation: false
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: runner-tools
+              mountPath: /tools
+      containers:
+        - name: runner
+          image: gitea/act_runner:0.2.11
+          imagePullPolicy: IfNotPresent
+          command: [/bin/sh, -c]
+          args:
+            - |
+              set -e
+              apk add --no-cache --upgrade --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community aws-cli bash ca-certificates curl expat jq kubectl musl nodejs npm python3 yq
+              install -m 0755 /tools/buildctl /usr/local/bin/buildctl
+              export PATH="/tools:${PATH}"
+              exec /opt/act/run.sh
+          env:
+            - name: SSL_CERT_DIR
+              value: /etc/ssl/certs
+            - name: GITEA_INSTANCE_URL
+              value: https://git.korab.space
+            - name: GITEA_RUNNER_REGISTRATION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gitea-runner-registration
+                  key: token
+            - name: GITEA_RUNNER_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: GITEA_RUNNER_LABELS
+              value: self-hosted:host,linux:host,homelab:host,buildkit:host
+            - name: CONFIG_FILE
+              value: /data/config.yaml
+            - name: BUILDKIT_HOST
+              value: tcp://buildkit:1234
+            - name: DOCKER_CONFIG
+              value: /data/.docker
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+              ephemeral-storage: 1Gi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+              ephemeral-storage: 5Gi
+          readinessProbe:
+            exec:
+              command: [pgrep, -f, act_runner]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: [pgrep, -f, act_runner]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          volumeMounts:
+            - name: runner-data
+              mountPath: /data
+            - name: runner-config
+              mountPath: /data/config.yaml
+              subPath: config.yaml
+            - name: gitea-registry-auth
+              mountPath: /data/.docker
+              readOnly: true
+            - name: runner-tools
+              mountPath: /tools
+              readOnly: true
+            - name: local-lan-ca-cert
+              mountPath: /etc/ssl/certs/local-lan-ca.crt
+              subPath: ca.crt
+              readOnly: true
+      volumes:
+        - name: runner-config
+          configMap:
+            name: gitea-runner-config
+            items:
+              - key: config
+                path: config.yaml
+        - name: runner-data
+          emptyDir:
+            sizeLimit: 5Gi
+        - name: gitea-registry-auth
+          secret:
+            secretName: gitea-registry-auth
+            optional: true
+            items:
+              - key: .dockerconfigjson
+                path: config.json
+        - name: local-lan-ca-cert
+          configMap:
+            name: local-lan-ca-cert
+        - name: runner-tools
+          emptyDir: {}

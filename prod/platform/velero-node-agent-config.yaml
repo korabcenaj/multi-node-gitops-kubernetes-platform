@@ -1,0 +1,30 @@
+# Velero node-agent concurrency configuration.
+#
+# By default Velero's node-agent processes only 1 PodVolumeBackup/Restore at a
+# time per node (globalConfig: 1). This turns every backup into a serial queue
+# that artificially caps throughput regardless of available network or I/O
+# bandwidth.
+#
+# This ConfigMap raises the per-node concurrency limit to 3, allowing up to 3
+# volume backup/restore streams to run in parallel on each node. The node-agent
+# DaemonSet is pointed at this ConfigMap via --node-agent-configmap (set in the
+# HelmRelease's nodeAgent.extraArgs).
+#
+# References:
+#   https://velero.io/docs/v1.18/node-agent-concurrency/
+#   https://velero.io/docs/v1.18/supported-configmaps/node-agent-configmap/
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-agent-config
+  namespace: velero
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    app.kubernetes.io/component: velero
+data:
+  node-agent-config.json: |
+    {
+      "loadConcurrency": {
+        "globalConfig": 3
+      }
+    }

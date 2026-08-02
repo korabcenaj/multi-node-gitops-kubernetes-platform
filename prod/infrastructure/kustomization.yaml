@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespaces.yaml
+  - kube-vip.yaml
+  - cert-manager.yaml
+  - letsencrypt-cloudflare-clusterissuer.yaml
+  - local-lan-ca-issuer.yaml
+  - metallb-address-pool.yaml
+  - ip-allowlist.yaml
+  - traefik.yaml
+  - longhorn.yaml
+  - longhorn-single-storageclass.yaml
+  - longhorn-critical-2replica-storageclass.yaml
+  - longhorn-worker-bulk-storageclass.yaml
+  - minio.yaml
+  - minio-networkpolicy.yaml
+  - monitoring.yaml
+  - monitoring-public-certificates.yaml
+  - gateway-api/
+  - gateway.yaml
+  - grafana-httproute.yaml
+  - prometheus-httproute.yaml
+  - longhorn-httproute.yaml
+  - loki.yaml
+  - tempo.yaml
+  - kube-downscaler.yaml
+  - resource-governance/

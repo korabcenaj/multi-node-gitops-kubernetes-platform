@@ -1,0 +1,66 @@
+# OAuth2-Proxy — Flux HelmRelease (migrated from Terraform)
+# Sensitive values via Kubernetes Secret oauth2-proxy-secrets
+#
+# Prerequisites (must exist before this HelmRelease will succeed):
+#   kubectl -n oauth2-proxy get secret oauth2-proxy-secrets   # clientSecret + cookieSecret
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: oauth2-proxy
+  namespace: oauth2-proxy
+spec:
+  suspend: true
+  releaseName: oauth2-proxy
+  chart:
+    spec:
+      chart: oauth2-proxy
+      version: 7.7.1
+      sourceRef:
+        kind: HelmRepository
+        name: oauth2-proxy
+        namespace: flux-system
+  interval: 1h
+  timeout: 10m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+  values:
+    # Disabled until an OIDC provider actually serves the configured realm.
+    # The discovery endpoint returns 404 today; keeping a replica would only
+    # create a permanent CrashLoop. The issuer uses a Let's Encrypt cert, so
+    # no custom CA bundle is required.
+    replicaCount: 0
+    config:
+      clientID: oauth2-proxy
+    extraArgs:
+      provider: oidc
+      email-domain: "*"
+      oidc-issuer-url: https://sso.korab.space/realms/homelab
+      allowed-group: homelab-admins
+      scope: "openid email profile groups"
+      upstream: file:///dev/null
+      skip-provider-button: true
+    ingress:
+      enabled: false
+    service:
+      type: ClusterIP
+    resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+  valuesFrom:
+    - kind: Secret
+      name: oauth2-proxy-secrets
+      valuesKey: clientSecret
+      targetPath: config.clientSecret
+    - kind: Secret
+      name: oauth2-proxy-secrets
+      valuesKey: cookieSecret
+      targetPath: config.cookieSecret

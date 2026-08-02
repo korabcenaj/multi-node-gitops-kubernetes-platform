@@ -1,0 +1,19 @@
+# Velero — require an always-on node; scheduled backups must run overnight.
+- op: add
+  path: /spec/values/affinity
+  value:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: power.homelab/always-on
+                operator: In
+                values:
+                  - "true"
+- op: add
+  path: /spec/values/tolerations
+  value:
+    - key: power.homelab/critical-only
+      operator: Equal
+      value: "true"
+      effect: NoSchedule

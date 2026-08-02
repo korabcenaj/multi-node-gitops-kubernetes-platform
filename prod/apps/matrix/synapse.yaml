@@ -1,0 +1,147 @@
+---
+# Synapse media PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: synapse-media-pvc
+  namespace: matrix
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 20Gi
+---
+# Synapse Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: synapse
+  namespace: matrix
+  labels:
+    app: synapse
+    app.kubernetes.io/part-of: matrix
+spec:
+  # Low-power profile: restore to 1 together with Matrix PostgreSQL.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: synapse
+  template:
+    metadata:
+      labels:
+        app: synapse
+    spec:
+      initContainers:
+        # Generate signing key on first run if not present
+        - name: generate-keys
+          image: matrixdotorg/synapse:v1.143.0
+          command:
+            - /bin/sh
+            - -c
+            - |
+              if [ ! -f /data/muzshpi.space.signing.key ]; then
+                echo "Generating signing key..."
+                python3 -c "from signedjson.key import generate_signing_key, write_signing_keys; f = open('/data/muzshpi.space.signing.key', 'w'); write_signing_keys(f, [generate_signing_key('ed25519')]); f.close(); print('Signing key generated')"
+              fi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      containers:
+        - name: synapse
+          image: matrixdotorg/synapse:v1.143.0
+          ports:
+            - containerPort: 8008
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+          env:
+            - name: SYNAPSE_CONFIG_DIR
+              value: /data
+            - name: SYNAPSE_CONFIG_PATH
+              value: /data/homeserver.yaml
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: matrix-postgres-secret
+                  key: password
+            - name: REGISTRATION_SHARED
+              valueFrom:
+                secretKeyRef:
+                  name: matrix-synapse-secret
+                  key: registration-shared
+            - name: MACAROON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: matrix-synapse-secret
+                  key: macaroon-key
+            - name: FORM_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: matrix-synapse-secret
+                  key: form-secret
+          command:
+            - python3
+            - -c
+            - |
+              import os
+              with open('/config/homeserver.yaml', 'r') as f:
+                  content = f.read()
+              content = content.replace('{{ POSTGRES_PASSWORD }}', os.environ['POSTGRES_PASSWORD'])
+              content = content.replace('{{ REGISTRATION_SHARED }}', os.environ['REGISTRATION_SHARED'])
+              content = content.replace('{{ MACAROON_KEY }}', os.environ['MACAROON_KEY'])
+              content = content.replace('{{ FORM_SECRET }}', os.environ['FORM_SECRET'])
+              with open('/data/resolved.yaml', 'w') as f:
+                  f.write(content)
+              import synapse.app.homeserver
+              import sys
+              sys.argv = ['synapse', '--config-path', '/data/resolved.yaml']
+              synapse.app.homeserver.main()
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8008
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8008
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: synapse-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: synapse-media-pvc
+---
+# Synapse Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: synapse
+  namespace: matrix
+  labels:
+    app: synapse
+spec:
+  ports:
+    - port: 8008
+      targetPort: 8008
+      name: http
+  selector:
+    app: synapse

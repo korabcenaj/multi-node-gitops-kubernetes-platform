@@ -1,0 +1,21 @@
+# Monitoring namespace ResourceQuota
+# Workloads: Prometheus (512Mi req/1Gi lim), Grafana (256Mi req), Alertmanager,
+# kube-state-metrics, kube-prometheus-stack-operator.
+# Defaults also cover chart sidecars and the five-node exporter DaemonSet.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: platform-observability
+spec:
+  hard:
+    requests.cpu: "1"
+    requests.memory: 3Gi
+    limits.cpu: "8"
+    limits.memory: 10Gi
+    pods: "30"
+    persistentvolumeclaims: "5"
+    services: "20"

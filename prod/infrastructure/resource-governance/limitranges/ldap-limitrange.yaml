@@ -1,0 +1,24 @@
+# LDAP namespace LimitRange
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-defaults
+  namespace: ldap
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: platform-auth
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      default:
+        cpu: 200m
+        memory: 256Mi
+      min:
+        cpu: 10m
+        memory: 32Mi
+      max:
+        cpu: 1
+        memory: 1Gi

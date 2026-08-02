@@ -1,0 +1,39 @@
+# Longhorn Worker Bulk StorageClass
+#
+# ⚠️  This StorageClass is for BULK/OFFLINE/NON-CRITICAL storage ONLY.
+# Uses the worker node's 3 TB HDD for large, non-critical volumes.
+# DO NOT use this class for database workloads.
+#
+# Prerequisites (apply manually):
+#   kubectl -n longhorn-system patch node.longhorn.io worker --type='merge' \
+#     -p '{"spec":{"tags":["bulk"]}}'
+#   # Tag worker's HDD disk with "bulk" tag:
+#   DISK_ID=$(kubectl -n longhorn-system get node.longhorn.io worker -o json | jq -r '.spec.disks | keys[0]')
+#   kubectl -n longhorn-system patch node.longhorn.io worker --type='json' \
+#     -p='[{"op":"replace","path":"/spec/disks/'$DISK_ID'/tags","value":["bulk","hdd"]}]'
+#
+# Number of replicas: 1 (worker is a single node with 3 TB HDD).
+# No redundancy for bulk storage — use backups for important bulk data.
+#
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-worker-bulk
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: "1"
+  staleReplicaTimeout: "30"
+  fromBackup: ""
+  fsType: ext4
+  dataLocality: disabled
+  unmapMarkSnapChainRemoved: ignored
+  disableRevisionCounter: "true"
+  dataEngine: v1
+  backupTargetName: default
+  # Disk selector: only use disks tagged "bulk" on worker node
+  diskSelector: "bulk"

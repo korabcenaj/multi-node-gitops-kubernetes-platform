@@ -1,0 +1,150 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-config
+  namespace: dns
+data:
+  Corefile: |
+    # Forward cluster-internal domains to kube-system CoreDNS
+    cluster.local:53 {
+        forward . 10.96.0.10 {
+            max_concurrent 1000
+        }
+        errors
+        reload
+    }
+
+    # Single zone: serves local domains, forwards everything else to public DNS
+    .:53 {
+        # LAN-only service records. git.korab.space is deliberately absent:
+        # authorised users resolve it through Tailscale restricted DNS.
+        hosts {
+            192.168.1.206 sso.local.lan
+            192.168.1.206 longhorn.local.lan
+            192.168.1.206 longhorn.korab.space
+            192.168.1.206 semaphore.korab.space
+            192.168.1.206 dev.korab.space
+            192.168.1.206 grafana.local.lan
+            192.168.1.206 gitea.korab.space
+            192.168.1.206 grafana.korab.space
+            192.168.1.206 prometheus.korab.space
+            192.168.1.206 qbittorrent.korab.space
+            192.168.1.206 chat.muzshpi.space
+            192.168.1.206 matrix.muzshpi.space
+            fallthrough
+        }
+
+        # Forward external queries to public DNS servers to avoid loops
+        forward . 1.1.1.1 8.8.8.8 {
+            max_concurrent 1000
+        }
+
+        log
+        errors
+        health {
+            lameduck 5s
+        }
+        ready
+        reload
+        loadbalance
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coredns
+  namespace: dns
+  labels:
+    app: coredns
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: coredns
+  template:
+    metadata:
+      labels:
+        app: coredns
+      annotations:
+        io.cilium.no-dns-proxy: "true"
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: coredns
+              topologyKey: kubernetes.io/hostname
+      tolerations:
+        - key: power.homelab/critical-only
+          operator: Exists
+        - key: node.kubernetes.io/unschedulable
+          operator: Exists
+      containers:
+        - name: coredns
+          image: coredns/coredns:1.12.1
+          args: ["-conf", "/etc/coredns/Corefile"]
+          ports:
+            - name: dns-udp
+              containerPort: 53
+              protocol: UDP
+            - name: dns-tcp
+              containerPort: 53
+              protocol: TCP
+            - name: metrics
+              containerPort: 9153
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/coredns
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8181
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: coredns-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coredns
+  namespace: dns
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: 192.168.1.200
+  labels:
+    app: coredns
+spec:
+  type: LoadBalancer
+  selector:
+    app: coredns
+  ports:
+    - name: dns-udp
+      port: 53
+      targetPort: 53
+      protocol: UDP
+    - name: dns-tcp
+      port: 53
+      targetPort: 53
+      protocol: TCP

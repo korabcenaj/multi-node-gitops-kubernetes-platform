@@ -1,0 +1,19 @@
+# ─────────────────────────────────────────────────────────────
+# Homelab Cluster — Dev Environment
+# Lightweight subset of prod for testing changes safely.
+#
+# Add resources incrementally as needed for pre-prod validation.
+# ─────────────────────────────────────────────────────────────
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - apps
+# resources:
+#   - helm-repositories    # (shared — use prod's or copy)
+#   - infrastructure        # Cert-manager, Traefik, Longhorn...
+#   - platform              # Falco, Harbor, Velero...
+#   - apps                  # Matrix, Gitea, Backstage...
+
+components: []
+# components:
+#   - power-optimization

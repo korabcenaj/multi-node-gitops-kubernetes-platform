@@ -1,0 +1,75 @@
+# MetalLB — Flux HelmRelease (migrated from Terraform)
+# NOTE: Speaker probes patched to use FRR metrics port 7473 instead of 7472
+# because in FRR mode the speaker's built-in HTTP metrics server on port 7472
+# does not start. The frr-metrics container serves metrics on port 7473.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: metallb
+  namespace: metallb-system
+spec:
+  releaseName: metallb
+  chart:
+    spec:
+      chart: metallb
+      version: 0.15.3
+      sourceRef:
+        kind: HelmRepository
+        name: metallb
+        namespace: flux-system
+  interval: 1h
+  timeout: 10m
+  values:
+    controller:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+      livenessProbe:
+        initialDelaySeconds: 30
+        timeoutSeconds: 5
+      readinessProbe:
+        initialDelaySeconds: 30
+        timeoutSeconds: 5
+    speaker:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+      livenessProbe:
+        initialDelaySeconds: 30
+        timeoutSeconds: 5
+        periodSeconds: 10
+        failureThreshold: 5
+      readinessProbe:
+        initialDelaySeconds: 30
+        timeoutSeconds: 5
+        periodSeconds: 10
+        failureThreshold: 5
+      frr:
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: DaemonSet
+              name: metallb-speaker
+            patch: |
+              - op: replace
+                path: /spec/template/spec/containers/0/livenessProbe/httpGet/port
+                value: 7473
+              - op: replace
+                path: /spec/template/spec/containers/0/readinessProbe/httpGet/port
+                value: 7473

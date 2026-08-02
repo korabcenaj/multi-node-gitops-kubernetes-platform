@@ -1,0 +1,27 @@
+# Semaphore namespace LimitRange
+# Semaphore UI and PostgreSQL currently have NO requests or limits set.
+# Observed actual usage: ~1m CPU / ~37Mi memory (both pods combined).
+# Default limit of 512Mi is safe for small CI orchestration service.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-defaults
+  namespace: semaphore
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: platform-ci
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      default:
+        cpu: 500m
+        memory: 512Mi
+      min:
+        cpu: 10m
+        memory: 32Mi
+      max:
+        cpu: 2
+        memory: 2Gi

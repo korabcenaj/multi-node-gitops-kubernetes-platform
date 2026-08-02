@@ -1,0 +1,57 @@
+# Longhorn — pin controller & components to always-on node
+# Longhorn manager, driver-deployer, UI, and CSI attacher must stay on always-on.
+# Instance-manager pods (per-node) are DaemonSet-like and node-bound.
+#
+# Uses strategic merge because Longhorn chart uses deeply nested value keys
+# that don't exist in the base manifest yet.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: longhorn
+spec:
+  values:
+    longhornManager:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: power.homelab/always-on
+                    operator: In
+                    values:
+                      - "true"
+      tolerations:
+        - key: power.homelab/critical-only
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+    longhornDriver:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: power.homelab/always-on
+                    operator: In
+                    values:
+                      - "true"
+      tolerations:
+        - key: power.homelab/critical-only
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+    longhornUI:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: power.homelab/always-on
+                    operator: In
+                    values:
+                      - "true"
+      tolerations:
+        - key: power.homelab/critical-only
+          operator: Equal
+          value: "true"
+          effect: NoSchedule

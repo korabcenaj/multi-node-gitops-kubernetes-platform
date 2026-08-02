@@ -1,0 +1,20 @@
+# Semaphore (CI orchestration) namespace ResourceQuota
+# Workloads: Semaphore UI + PostgreSQL. Currently no requests set.
+# LimitRange will inject defaults. Quota prevents runaway growth.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: semaphore
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: platform-ci
+spec:
+  hard:
+    requests.cpu: "200m"
+    requests.memory: 512Mi
+    limits.cpu: "2"
+    limits.memory: 2Gi
+    pods: "10"
+    persistentvolumeclaims: "3"
+    services: "5"

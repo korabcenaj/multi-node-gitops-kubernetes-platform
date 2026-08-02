@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tailscale
+  namespace: vpn
+  labels:
+    app: tailscale
+    app.kubernetes.io/part-of: vpn
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tailscale
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: tailscale
+    spec:
+      serviceAccountName: tailscale
+      # Prefer always-on nodes (control1/control2) so VPN stays up
+      # during nightly worker shutdown cycles
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: power.homelab/always-on
+                    operator: Exists
+      tolerations:
+        - key: power.homelab/critical-only
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: tailscale
+          image: ghcr.io/tailscale/tailscale:stable
+          imagePullPolicy: IfNotPresent
+          env:
+            # Auth key for initial join — read from Secret
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale-authkey
+                  key: TS_AUTHKEY
+            # Store Tailscale node state in a Kubernetes Secret so
+            # the pod survives restarts without re-authenticating
+            - name: TS_KUBE_SECRET
+              value: tailscale-state
+            # Advertise the full homelab LAN subnet to the Tailnet
+            - name: TS_ROUTES
+              value: "192.168.1.0/24"
+            # Use kernel WireGuard (not userspace) for better performance
+            - name: TS_USERSPACE
+              value: "false"
+            # Do not accept Tailscale's Magic DNS — use cluster CoreDNS
+            - name: TS_EXTRA_ARGS
+              value: "--accept-dns=false"
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          volumeMounts:
+            - name: tun
+              mountPath: /dev/net/tun
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+      volumes:
+        - name: tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice

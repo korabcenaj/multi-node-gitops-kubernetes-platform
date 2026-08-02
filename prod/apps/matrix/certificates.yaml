@@ -1,0 +1,30 @@
+---
+# Let's Encrypt certificate for matrix.muzshpi.space
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: matrix-muzshpi-space-tls
+  namespace: matrix
+spec:
+  secretName: matrix-muzshpi-space-tls
+  dnsNames:
+    - matrix.muzshpi.space
+  issuerRef:
+    name: letsencrypt-cloudflare-dns01
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# Let's Encrypt certificate for chat.muzshpi.space
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: chat-muzshpi-space-tls
+  namespace: matrix
+spec:
+  secretName: chat-muzshpi-space-tls
+  dnsNames:
+    - chat.muzshpi.space
+  issuerRef:
+    name: letsencrypt-cloudflare-dns01
+    kind: ClusterIssuer
+    group: cert-manager.io

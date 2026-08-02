@@ -1,0 +1,142 @@
+# =============================================================================
+# Backstage App-Config ConfigMap
+# Mounted at /app/app-config.d/ and loaded via --config args.
+# =============================================================================
+# The baked-in app-config.production.yaml in the Docker image has a deprecated
+# 'listen' format.  We bypass it and load production.yaml from this ConfigMap
+# instead (see backstage.yaml HelmRelease args).
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backstage-app-config
+  namespace: backstage
+data:
+  # ── Production overrides (replaces app-config.production.yaml) ──
+  production.yaml: |
+    app:
+      baseUrl: https://backstage.korab.space
+    backend:
+      baseUrl: https://backstage.korab.space
+      listen:
+        port: 7007
+      database:
+        client: pg
+        connection:
+          host: ${POSTGRES_HOST}
+          port: ${POSTGRES_PORT}
+          user: ${POSTGRES_USER}
+          password: ${POSTGRES_PASSWORD}
+          database: ${POSTGRES_DB}
+    auth:
+      environment: production
+      providers:
+        ldap:
+          production:
+            cookies:
+              secure: false
+              field: backstage-token
+            ldapAuthenticationOptions:
+              userSearchBase: ou=users,dc=homelab,dc=local
+              usernameAttribute: uid
+              adminDn: cn=admin,dc=homelab,dc=local
+              adminPassword: ldap-admin-password
+              ldapOpts:
+                url: ldap://openldap.ldap.svc.cluster.local
+    catalog:
+      providers:
+        ldap:
+          default:
+            target: ldap://openldap.ldap.svc.cluster.local
+            bind:
+              dn: cn=admin,dc=homelab,dc=local
+              secret: ldap-admin-password
+            users:
+              dn: ou=users,dc=homelab,dc=local
+              options:
+                filter: (uid=*)
+              map:
+                rdn: uid
+                name: uid
+                displayName: cn
+                email: mail
+                memberOf: cn
+      locations:
+        - type: file
+          target: ./examples/entities.yaml
+        - type: file
+          target: ./examples/template/template.yaml
+          rules:
+            - allow: [Template]
+
+  # ── App overrides ───────────────────────────────────────────
+  app.yaml: |
+    app:
+      baseUrl: https://backstage.korab.space
+    backend:
+      baseUrl: https://backstage.korab.space
+      cors:
+        origin: https://backstage.korab.space
+
+  # ── Kubernetes plugin ───────────────────────────────────────
+  kubernetes.yaml: |
+    kubernetes:
+      serviceLocatorMethod:
+        type: multiTenant
+      clusterLocatorMethods:
+        - type: config
+          clusters:
+            - name: homelab
+              url: https://kubernetes.default.svc
+              authProvider: serviceAccount
+              skipTLSVerify: false
+              skipMetricsLookup: false
+              dashboardUrl: https://backstage.korab.space
+              customResources:
+                - group: traefik.io
+                  apiVersion: v1alpha1
+                  plural: ingressroutes
+                - group: cert-manager.io
+                  apiVersion: v1
+                  plural: certificates
+                - group: helm.toolkit.fluxcd.io
+                  apiVersion: v2
+                  plural: helmreleases
+                - group: source.toolkit.fluxcd.io
+                  apiVersion: v1
+                  plural: gitrepositories
+
+  # ── Gitea integration ───────────────────────────────────────
+  gitea.yaml: |
+    integrations:
+      gitea:
+        - host: git.korab.space
+          baseUrl: https://git.korab.space
+          username: ${GITEA_USERNAME}
+          password: ${GITEA_PASSWORD}
+    catalog:
+      providers:
+        gitea:
+          default:
+            host: git.korab.space
+        ldap:
+          default:
+            target: ldap://openldap.ldap.svc.cluster.local
+            bind:
+              dn: cn=admin,dc=homelab,dc=local
+              secret: ldap-admin-password
+            users:
+              dn: ou=users,dc=homelab,dc=local
+              options:
+                filter: (uid=*)
+              map:
+                rdn: uid
+                name: uid
+                displayName: cn
+                email: mail
+                memberOf: cn
+      locations:
+        - type: url
+          target: https://git.korab.space/korab/infra-repo/raw/branch/main/catalog-info.yaml
+          rules:
+            - allow: [Component, System, API, Resource, Location]

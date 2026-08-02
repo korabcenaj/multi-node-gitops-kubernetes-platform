@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  # K3s imports *.override inside the existing .:53 server block. The rewrite
+  # is exact, so every other korab.space hostname keeps normal DNS behavior.
+  gitea-vps.override: |
+    rewrite stop {
+        name prefix git.korab.space gitea-vps-egress.flux-system.svc.cluster.local
+        answer auto
+    }

@@ -1,0 +1,43 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: matrix-synapse
+  namespace: matrix
+  labels:
+    app: synapse
+spec:
+  parentRefs:
+    - name: traefik
+      namespace: traefik
+  hostnames:
+    - "matrix.muzshpi.space"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: synapse
+          port: 8008
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: matrix-element
+  namespace: matrix
+  labels:
+    app: element
+spec:
+  parentRefs:
+    - name: traefik
+      namespace: traefik
+  hostnames:
+    - "chat.muzshpi.space"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: element
+          port: 80

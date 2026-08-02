@@ -1,0 +1,20 @@
+# Matrix namespace ResourceQuota
+# Workloads: Synapse (250m/512Mi req), Postgres (250m/256Mi req), Element (50m/128Mi req).
+# Synapse can burst during initial sync. Conservative 2x headroom.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: matrix
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: stateful-app
+spec:
+  hard:
+    requests.cpu: "1500m"
+    requests.memory: 3Gi
+    limits.cpu: "6"
+    limits.memory: 8Gi
+    pods: "15"
+    persistentvolumeclaims: "5"
+    services: "10"

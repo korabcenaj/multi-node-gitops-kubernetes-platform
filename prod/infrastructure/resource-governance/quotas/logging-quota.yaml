@@ -1,0 +1,19 @@
+# Logging namespace ResourceQuota
+# Workloads: Loki StatefulSet plus one Promtail pod on each node.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: logging
+  labels:
+    app.kubernetes.io/managed-by: Kustomize
+    governance.korab.space/class: platform-observability
+spec:
+  hard:
+    requests.cpu: "500m"
+    requests.memory: 1Gi
+    limits.cpu: "3"
+    limits.memory: 3Gi
+    pods: "10"
+    persistentvolumeclaims: "3"
+    services: "5"

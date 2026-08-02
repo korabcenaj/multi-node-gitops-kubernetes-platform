@@ -1,0 +1,10 @@
+apiVersion: tailscale.com/v1alpha1
+kind: ProxyGroup
+metadata:
+  name: gitea-egress
+spec:
+  type: egress
+  replicas: 2
+  hostnamePrefix: k3s-git-egress
+  tags:
+    - tag:k3s-git-egress
