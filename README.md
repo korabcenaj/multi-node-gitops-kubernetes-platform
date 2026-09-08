@@ -21,6 +21,15 @@ The environment combines three control-plane/etcd nodes, two labeled workers, an
 
 Three server nodes hold control-plane and etcd roles; two workers and one integration node supply application capacity. Flux currently retains a usable artifact and reports one Kustomization plus 12 Helm releases Ready, while its Git source retry exposes an internal service-resolution dependency.
 
+A three-node etcd/control-plane core provides high availability for the Kubernetes API; two worker nodes run platform workloads; a dedicated integration node isolates experimental services. Ingress traffic flows through MetalLB and Traefik to Cilium-networked pods; Longhorn manages distributed block storage across nodes.
+
+1. **GitOps Reconciliation:** FluxCD GitOps controller reconciles desired state from Gitea repository.
+2. **Ingress Routing:** MetalLB advertises virtual IPs; Traefik routes inbound HTTP/HTTPS traffic.
+3. **Network Policy:** Cilium enforces eBPF-based network policies and handles pod networking.
+4. **Persistent Storage:** Longhorn CSI provisions and replicates persistent volumes across worker nodes.
+5. **Certificate Automation:** cert-manager automates Let's Encrypt certificate issuance via Cloudflare DNS-01.
+6. **Disaster Recovery:** Velero coordinates scheduled backups to local and remote object storage.
+
 ## Validation & Evidence
 
 - 6 of 6 nodes Ready on 24 July 2026
