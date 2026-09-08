@@ -2,10 +2,10 @@
 
 > A self-managed six-node k3s environment for operating stateful services, exercising failure modes, and checking infrastructure tools against interacting network, storage, scheduling, delivery, and recovery systems.
 
-**Status:** Validated · **Type:** Platform · **Domain:** 
+**Status:** Validated · **Type:** Platform · **Domain:** Reliability and operations
 
 This repository is the public home and documentation for the project described in the
-[Korab Cenaj portfolio case study](https://korab.space/projects/multi-node-gitops-kubernetes-platform.html). Content is
+[Korab Cenaj portfolio case study](https://korab.space/projects/multi-node-gitops-kubernetes-platform/). Content is
 evidence-bounded: what is validated is stated as validated, and open items are listed as
 limitations rather than claims.
 
@@ -21,8 +21,6 @@ The environment combines three control-plane/etcd nodes, two labeled workers, an
 
 Three server nodes hold control-plane and etcd roles; two workers and one integration node supply application capacity. Flux currently retains a usable artifact and reports one Kustomization plus 12 Helm releases Ready, while its Git source retry exposes an internal service-resolution dependency.
 
-_None._
-
 ## Validation & Evidence
 
 - 6 of 6 nodes Ready on 24 July 2026
@@ -36,15 +34,20 @@ _None._
 
 ## Lessons Learned
 
-_None._
+- Separating "artifact reconciled" from "source healthy" surfaced a real internal DNS/service-resolution issue with the Flux Git source that a simple pass/fail health check would have hidden.
+- Longhorn onboarding on a newly added node isn't instant — the lagging manager/plugin path is a reminder to gate stateful scheduling on storage-layer readiness, not just node readiness.
+- "A backup job ran" and "a backup job succeeded and landed off-site" are different claims — Velero's mixed history here is exactly the kind of gap that gets missed if only job completion is checked.
 
 ## Limitations
 
-_None._
+- Self-managed home/lab platform, not an employer production system — findings describe behavior at this scale and topology only.
+- The published snapshot is point-in-time (24 July 2026), not a standing or continuously monitored health claim.
+- The incomplete Longhorn integration on the newest node and the off-site Velero backup failures were open at the time of this snapshot and aren't yet marked resolved in the published record.
+- Continuous monitoring, automated alerting on these specific gaps, and a follow-up snapshot after remediation are outside the current published evidence.
 
 ## Technologies
 
 Kubernetes, Reliability, Recovery, Automation, Platform
 
 ---
-See the full case study at [https://korab.space/projects/multi-node-gitops-kubernetes-platform.html](https://korab.space/projects/multi-node-gitops-kubernetes-platform.html).
+See the full case study at [https://korab.space/projects/multi-node-gitops-kubernetes-platform/](https://korab.space/projects/multi-node-gitops-kubernetes-platform/).
